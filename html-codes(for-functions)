@@ -1,0 +1,705 @@
+part 2
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIM Industries // DSV Dark Angel (Class-VIII Master Sim)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
+    body { background: #040609; color: #d8e6f3; overflow: hidden; }
+    #canvas-container { width: 100vw; height: 100vh; display: block; }
+    
+    .hud-panel {
+      position: absolute; background: rgba(7, 12, 19, 0.90);
+      border: 1px solid #2b4c6f; padding: 12px; border-radius: 4px;
+      box-shadow: 0 0 22px rgba(0, 180, 255, 0.14); backdrop-filter: blur(5px);
+    }
+    #top-bar { top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; }
+    #top-bar h1 { font-size: 15px; letter-spacing: 1.5px; color: #5ce1e6; }
+    #top-bar span { font-size: 11px; color: #8faec9; }
+
+    #controls { top: 70px; left: 12px; width: 325px; max-height: calc(100vh - 85px); overflow-y: auto; }
+    #controls h2 { font-size: 12px; color: #5ce1e6; border-bottom: 1px solid #1f364d; padding-bottom: 5px; margin-bottom: 8px; margin-top: 8px; }
+    #controls h2:first-child { margin-top: 0; }
+    
+    button {
+      width: 100%; padding: 8px 9px; margin-bottom: 6px; background: #0d1926;
+      color: #d8e6f3; border: 1px solid #2e5984; cursor: pointer; text-align: left;
+      font-size: 11px; transition: all 0.15s; border-radius: 3px;
+    }
+    button:hover { background: #183049; border-color: #5ce1e6; }
+    button.active { background: #133b4d; border-color: #5ce1e6; color: #5ce1e6; font-weight: bold; }
+    button.warn { border-color: #b45309; color: #fcd34d; }
+    button.warn.active { background: #451a03; border-color: #f59e0b; color: #fff; }
+    button.danger { border-color: #8f2d2d; color: #ff8a8a; }
+    button.danger.active { background: #4a1212; border-color: #ff4d4d; color: #fff; }
+
+    #telemetry { top: 70px; right: 12px; width: 335px; max-height: calc(100vh - 85px); overflow-y: auto; font-size: 11px; line-height: 1.45; }
+    #telemetry h2 { font-size: 12px; color: #5ce1e6; border-bottom: 1px solid #1f364d; padding-bottom: 5px; margin-bottom: 7px; }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .stat-val { color: #5ce1e6; font-weight: bold; text-align: right; }
+    .log-box {
+      margin-top: 8px; padding: 8px; background: #020407; border: 1px solid #1b2e42;
+      height: 140px; overflow-y: auto; font-size: 10.5px; color: #7ce38b;
+    }
+    #bottom-hint { bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #7f9bb5; padding: 5px 14px; }
+  </style>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://jsdelivr.net"></script>
+</head>
+<body>
+
+<div id="top-bar" class="hud-panel">
+  <div>
+    <h1>SIM INDUSTRIES × NASA // DSV DARK ANGEL (CLASS-VIII)</h1>
+    <span>872m × 420m × 75m TRANSFORMABLE PULSE-NET DOCKYARD // SPACE ACT CONSORTIUM</span>
+  </div>
+  <div style="text-align:right;">
+    <span id="grid-status" style="color:#7ce38b;">● AEGIS-NET QUANTUM FIREWALL: VERIFIED</span><br/>
+    <span>CREW: 40 SPECIALISTS • EXTERIOR REMORA PERIMETER: ACTIVE</span>
+  </div>
+</div>
+
+<div id="controls" class="hud-panel">
+  <h2>1. HULL & TRANSFORMABLE BAYS</h2>
+  <button id="btn-superbay" onclick="toggleSuperBay()"> TRANSFORM: IVAN SUPER-BAY (RETRACT WALLS)</button>
+  <button id="btn-camo" onclick="toggleCamo()"> HULL: MATTE-OBSIDIAN BASALT ARMOR</button>
+  <button id="btn-xray" onclick="toggleXray()"> VIEW: EXTERNAL ARMOR SHELL</button>
+
+  <h2>2. FLEET: IVAN & THE HAND (LASERS)</h2>
+  <button id="btn-doors" onclick="toggleDoors()"> BELLY DOORS (3x) & 65m ARMS: CLOSED</button>
+  <button id="btn-dock" onclick="toggleDocking()"> DEPLOY IVAN & THE HAND (ORBITAL OPS)</button>
+  <button id="btn-ivan-mode" onclick="toggleIvanCombat()"> IVAN MODE: ASTEROID (4 BIG WINGS CLOSED)</button>
+  <button id="btn-laser" onclick="fireIvanLaser()"> FIRE IVAN MASSIVE POINTED LASER</button>
+  <button id="btn-hand-laser" onclick="fireHandLaser()"> FIRE THE HAND CRATER LASER</button>
+
+  <h2>3. DISTRESS & ROBOTIC MAINTENANCE</h2>
+  <button id="btn-sos" class="warn" onclick="triggerDistress()">[SOS] SATELLITE IN TROUBLE: DISPATCH SWARM</button>
+  <button id="btn-vents" onclick="toggleVentClearing()"> REMORAS: CLEAR CLOGGED VENTS & DOORS</button>
+
+  <h2>4. 24-UNIT PULSE-NET & OVERRIDE</h2>
+  <button onclick="firePulse('stern')"> FIRE 12 STERN DRIVE UNITS (ACCEL)</button>
+  <button onclick="firePulse('bow')"> FIRE 8 BOW BRAKING UNITS (ORBIT INSERT)</button>
+  <button onclick="firePulse('ventral')"> FIRE 4 VENTRAL LIFT UNITS (162 MN)</button>
+  <button onclick="launchMassDriver()"> LUNAR MASS DRIVER PAYLOAD LAUNCH</button>
+  <button id="btn-codeblack" class="danger" onclick="triggerCodeBlack()">[!] CODE BLACK: AIR-GAP & LOCKDOWN</button>
+</div>
+
+<div id="telemetry" class="hud-panel">
+  <h2>MASTER SYSTEM TELEMETRY</h2>
+  <div class="stat-row"><span>DIMENSIONS:</span><span class="stat-val">872m L × 420m W × 75m H</span></div>
+  <div class="stat-row"><span>SOLAR SKIN OUTPUT:</span><span class="stat-val">42.8 MW (287,000 m²)</span></div>
+  <div class="stat-row"><span>DOCK CONFIGURATION:</span><span class="stat-val" id="val-bays">3 ISOLATED BAYS (36 SATS)</span></div>
+  <div class="stat-row"><span>PROJECT IVAN (2× ISS):</span><span class="stat-val" id="val-ivan">ASTEROID (4 BIG WINGS CLOSED)</span></div>
+  <div class="stat-row"><span>THE HAND (2× ISS):</span><span class="stat-val" id="val-hand">TOP ANTENNA + UNIFIED DISH</span></div>
+  <div class="stat-row"><span>PULSE-NET CHAMBERS:</span><span class="stat-val" id="val-pulse">24 READY (12S / 8B / 4V)</span></div>
+
+  <h2>3-CLASS ROBOTIC WORKFORCE</h2>
+  <div class="stat-row"><span>CLASS 3 (REMORA 14cm):</span><span class="stat-val" id="val-remora">EXTERIOR PATROL & VENT OPS</span></div>
+  <div class="stat-row"><span>CLASS 2 (SCUTTLER 1.6m):</span><span class="stat-val" id="val-scuttler">COMMANDERS READY (DRILL-BLADES)</span></div>
+  <div class="stat-row"><span>CLASS 1 (VIPER 1.2m):</span><span class="stat-val" id="val-viper">LOUVER & NET SERPENTS READY</span></div>
+
+  <div class="log-box" id="sys-log">
+    > SIM GRID v6.4.0 ONLINE (NASA ISRU CONSORTIUM)...<br/>
+    > PROJECT IVAN (2× ISS): FULL-BASE LASER + 4 BIG WINGS.<br/>
+    > THE HAND (2× ISS): TOP ANTENNA + UNIFIED CORE & DISH.<br/>
+    > REMORA MICRO-DRONES ON EXTERIOR HULL PATROL.
+  </div>
+</div>
+
+<div id="bottom-hint" class="hud-panel">
+  LEFT-DRAG: ROTATE • SCROLL: ZOOM • RIGHT-DRAG: PAN
+</div>
+
+<div id="canvas-container"></div>
+
+<script>
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x040609, 0.00042);
+
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+  camera.position.set(470, 210, 550);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  scene.add(new THREE.AmbientLight(0x405570, 1.5));
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  sunLight.position.set(600, 800, 400);
+  scene.add(sunLight);
+  const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.95);
+  rimLight.position.set(-500, -300, -400);
+  scene.add(rimLight);
+
+  const starGeo = new THREE.BufferGeometry();
+  const starVerts = [];
+  for (let i = 0; i < 3200; i++) {
+    starVerts.push((Math.random() - 0.5) * 4200, (Math.random() - 0.5) * 4200, (Math.random() - 0.5) * 4200);
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xaec6df, size: 1.5 })));
+
+  const moonMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(260, 32, 32),
+    new THREE.MeshStandardMaterial({ color: 0x555961, roughness: 0.95 })
+  );
+  moonMesh.position.set(-880, -320, -920);
+  scene.add(moonMesh);
+
+  const darkAngel = new THREE.Group();
+  scene.add(darkAngel);
+
+  const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x0e1219, metalness: 0.78, roughness: 0.26, transparent: true, opacity: 1.0 });
+  const regolithMat = new THREE.MeshStandardMaterial({ color: 0x5c5e63, metalness: 0.15, roughness: 0.92, transparent: true, opacity: 1.0 });
+  const solarMat = new THREE.MeshStandardMaterial({ color: 0x08172c, emissive: 0x041224, metalness: 0.9, roughness: 0.14, transparent: true, opacity: 1.0 });
+
+  const hullGeo = new THREE.SphereGeometry(1, 64, 32);
+  hullGeo.scale(218, 18.75, 105);
+  const hullMesh = new THREE.Mesh(hullGeo, obsidianMat);
+  darkAngel.add(hullMesh);
+
+  const solarGeo = new THREE.SphereGeometry(1.003, 64, 32, 0, Math.PI * 2, 0, Math.PI * 0.42);
+  solarGeo.scale(215, 18.8, 102);
+  const solarMesh = new THREE.Mesh(solarGeo, solarMat);
+  darkAngel.add(solarMesh);
+
+  const bridgeGeo = new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  bridgeGeo.scale(24, 5.2, 16);
+  const bridgeMesh = new THREE.Mesh(bridgeGeo, new THREE.MeshStandardMaterial({ color: 0x1e2c3f, metalness: 0.85, roughness: 0.2 }));
+  bridgeMesh.position.set(-158, 12.8, 0);
+  darkAngel.add(bridgeMesh);
+
+  const internalGroup = new THREE.Group();
+  darkAngel.add(internalGroup);
+
+  const habitRing = new THREE.Mesh(
+    new THREE.TorusGeometry(26, 3, 16, 48),
+    new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0a2e46 })
+  );
+  habitRing.rotation.y = Math.PI / 2;
+  habitRing.position.set(148, 0, 0);
+  internalGroup.add(habitRing);
+
+  const retractableWalls = [];
+  [47.5, -47.5].forEach(xWall => {
+    const leftPanel = new THREE.Mesh(
+Use code with caution.
+new THREE.BoxGeometry(4, 19, 31),
+new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0a2538, metalness: 0.8 })
+);
+leftPanel.position.set(xWall, -2, 15.5);
+internalGroup.add(leftPanel);
+const rightPanel = new THREE.Mesh(
+new THREE.BoxGeometry(4, 19, 31),
+new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0a2538, metalness: 0.8 })
+);
+rightPanel.position.set(xWall, -2, -15.5);
+internalGroup.add(rightPanel);
+retractableWalls.push({ left: leftPanel, right: rightPanel });
+});
+const bayPositions = [95, 0, -95];
+const bellyDoors = [];
+const captureArms = [];
+bayPositions.forEach((xPos) => {
+const bayFrame = new THREE.Mesh(
+new THREE.BoxGeometry(66, 19, 64),
+new THREE.MeshBasicMaterial({ color: 0x2b4c6f, wireframe: true })
+);
+bayFrame.position.set(xPos, -2, 0);
+internalGroup.add(bayFrame);
+[-46, 46].forEach(zSide => {
+const mag = new THREE.Mesh(
+new THREE.BoxGeometry(52, 10, 14),
+new THREE.MeshStandardMaterial({ color: 0x7f1d1d, emissive: 0x2a0808, wireframe: true })
+);
+mag.position.set(xPos, -1, zSide);
+internalGroup.add(mag);
+});
+const doorPivotL = new THREE.Group();
+doorPivotL.position.set(xPos, -16, 24);
+const doorL = new THREE.Mesh(new THREE.BoxGeometry(56, 1.5, 23), obsidianMat);
+doorL.position.set(0, 0, -11.5);
+doorPivotL.add(doorL);
+darkAngel.add(doorPivotL);
+const doorPivotR = new THREE.Group();
+doorPivotR.position.set(xPos, -16, -24);
+const doorR = new THREE.Mesh(new THREE.BoxGeometry(56, 1.5, 23), obsidianMat);
+doorR.position.set(0, 0, 11.5);
+doorPivotR.add(doorR);
+darkAngel.add(doorPivotR);
+bellyDoors.push({ left: doorPivotL, right: doorPivotR });
+const armL = new THREE.Mesh(new THREE.BoxGeometry(3, 32, 3), new THREE.MeshStandardMaterial({ color: 0x5ce1e6 }));
+armL.position.set(xPos, -12, 22);
+internalGroup.add(armL);
+const armR = new THREE.Mesh(new THREE.BoxGeometry(3, 32, 3), new THREE.MeshStandardMaterial({ color: 0x5ce1e6 }));
+armR.position.set(xPos, -12, -22);
+internalGroup.add(armR);
+captureArms.push({ left: armL, right: armR });
+});
+const fleetGroup = new THREE.Group();
+internalGroup.add(fleetGroup);
+const ivanGroup = new THREE.Group();
+const ivanBaseDeck = new THREE.Mesh(
+new THREE.DodecahedronGeometry(16, 1),
+new THREE.MeshStandardMaterial({ color: 0x52555c, roughness: 0.94, metalness: 0.15 })
+);
+ivanBaseDeck.scale.set(1.2, 0.55, 1.2);
+ivanBaseDeck.position.set(0, 12, 0);
+const massiveLaserBody = new THREE.Mesh(
+new THREE.CylinderGeometry(19, 1.5, 42, 4),
+new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0c4a6e, metalness: 0.85, roughness: 0.18 })
+);
+massiveLaserBody.rotation.y = Math.PI / 4;
+massiveLaserBody.position.set(0, -13, 0);
+const ivanIceCrust = new THREE.Mesh(
+new THREE.CylinderGeometry(20.2, 2.2, 42.5, 4),
+new THREE.MeshStandardMaterial({ color: 0xa5d8ff, emissive: 0x0c3554, transparent: true, opacity: 0.45, roughness: 0.15 })
+);
+ivanIceCrust.rotation.y = Math.PI / 4;
+ivanIceCrust.position.set(0, -13, 0);
+const ivanLaserBeam = new THREE.Mesh(
+new THREE.CylinderGeometry(3.5, 1.2, 220, 16),
+new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0 })
+);
+ivanLaserBeam.position.set(0, -144, 0);
+const wingGeo = new THREE.ConeGeometry(15.5, 26, 4);
+const wingMat = new THREE.MeshStandardMaterial({ color: 0x4e5158, roughness: 0.95, metalness: 0.15 });
+const ivanWings = [];
+const wingConfigs = [
+{ closedX: 8.5, closedZ: 8.5, closedY: -1, closedTiltX: 0.0, closedTiltZ: 0.0, openX: 23, openZ: 23, openY: -1, openTiltX: -0.25, openTiltZ: 0.25, rotY: Math.PI * 0.25 },
+{ closedX: 8.5, closedZ: -8.5, closedY: -1, closedTiltX: 0.0, closedTiltZ: 0.0, openX: 23, openZ: -23, openY: -1, openTiltX: 0.25, openTiltZ: 0.25, rotY: -Math.PI * 0.25 },
+{ closedX: -8.5, closedZ: 8.5, closedY: -1, closedTiltX: 0.0, closedTiltZ: 0.0, openX: -23, openZ: 23, openY: -1, openTiltX: -0.25, openTiltZ: -0.25, rotY: Math.PI * 0.75 },
+{ closedX: -8.5, closedZ: -8.5, closedY: -1, closedTiltX: 0.0, closedTiltZ: 0.0, openX: -23, openZ: -23, openY: -1, openTiltX: 0.25, openTiltZ: -0.25, rotY: -Math.PI * 0.75 }
+];
+wingConfigs.forEach(cfg => {
+const wing = new THREE.Mesh(wingGeo, wingMat);
+wing.position.set(cfg.closedX, cfg.closedY, cfg.closedZ);
+wing.rotation.x = Math.PI + cfg.closedTiltX;
+wing.rotation.z = cfg.closedTiltZ;
+wing.rotation.y = cfg.rotY;
+wing.scale.set(1.45, 1.0, 0.38);
+wing.userData = cfg;
+ivanGroup.add(wing);
+ivanWings.push(wing);
+});
+ivanGroup.add(ivanBaseDeck, massiveLaserBody, ivanIceCrust, ivanLaserBeam);
+ivanGroup.position.set(95, -2, 0);
+fleetGroup.add(ivanGroup);
+const handGroup = new THREE.Group();
+const handAntennaMast = new THREE.Mesh(
+new THREE.CylinderGeometry(0.45, 0.9, 13, 10),
+new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 })
+);
+handAntennaMast.position.set(0, 12.5, 0);
+const handAntennaCrossbar = new THREE.Mesh(
+new THREE.BoxGeometry(6.5, 0.5, 6.5),
+new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0c4a6e, metalness: 0.85 })
+);
+handAntennaCrossbar.position.set(0, 15, 0);
+const handAntennaTip = new THREE.Mesh(
+new THREE.SphereGeometry(1.1, 12, 12),
+new THREE.MeshBasicMaterial({ color: 0x5ce1e6 })
+);
+handAntennaTip.position.set(0, 19.3, 0);
+const centerHub = new THREE.Mesh(
+new THREE.CylinderGeometry(12, 14, 5, 24),
+new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 })
+);
+centerHub.position.set(0, 4.5, 0);
+const dishBowl = new THREE.Mesh(
+new THREE.SphereGeometry(24, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.36),
+new THREE.MeshStandardMaterial({ color: 0xd9a05b, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide })
+);
+dishBowl.scale.set(1.25, 0.55, 1.25);
+dishBowl.position.set(0, -10.5, 0);
+const handLaserBarrel = new THREE.Mesh(
+new THREE.CylinderGeometry(1.8, 2.6, 24, 14),
+new THREE.MeshStandardMaterial({ color: 0x5ce1e6, emissive: 0x0e3a5c, metalness: 0.9, roughness: 0.2 })
+);
+handLaserBarrel.position.set(0, -9, 0);
+const handLaserBeam = new THREE.Mesh(
+new THREE.CylinderGeometry(0.9, 0.9, 200, 12),
+new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0 })
+);
+handLaserBeam.position.set(0, -120, 0);
+handGroup.add(handAntennaMast, handAntennaCrossbar, handAntennaTip, centerHub, dishBowl, handLaserBarrel, handLaserBeam);
+handGroup.position.set(0, 1, 0);
+fleetGroup.add(handGroup);
+const bay3Sats = [];
+for (let i = 0; i < 12; i++) {
+const sat = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 5), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
+sat.position.set(-112 + (i % 4) * 11, -5 + Math.floor(i / 4) * 4.5, -14 + (i % 3) * 14);
+fleetGroup.add(sat);
+bay3Sats.push(sat);
+}
+const sosSat = new THREE.Group();
+const sosCore = new THREE.Mesh(new THREE.BoxGeometry(14, 10, 14), new THREE.MeshStandardMaterial({ color: 0xf87171, emissive: 0x7f1d1d }));
+const sosPanel1 = new THREE.Mesh(new THREE.BoxGeometry(36, 1, 8), new THREE.MeshStandardMaterial({ color: 0x60a5fa }));
+sosSat.add(sosCore, sosPanel1);
+sosSat.position.set(160, -95, 130);
+sosSat.visible = false;
+scene.add(sosSat);
+const ventTargets = [
+new THREE.Vector3(212, 0, 24),
+new THREE.Vector3(212, 0, -24),
+new THREE.Vector3(-212, 0, 24),
+new THREE.Vector3(-212, 0, -24),
+new THREE.Vector3(95, -12, 46),
+new THREE.Vector3(-95, -12, -46)
+];
+const remoraMeshes = [];
+for (let i = 0; i < 24; i++) {
+const remora = new THREE.Mesh(
+new THREE.SphereGeometry(1.1, 8, 8),
+new THREE.MeshBasicMaterial({ color: 0x7ce38b })
+);
+remora.userData = {
+angle: (i / 24) * Math.PI * 2,
+radius: 135 + (i % 4) * 18,
+speed: 0.012 + (i % 3) * 0.004,
+yOff: (i % 3 - 1) * 20,
+ventIdx: i % ventTargets.length
+};
+scene.add(remora);
+remoraMeshes.push(remora);
+}
+const commandersGroup = new THREE.Group();
+commandersGroup.visible = false;
+scene.add(commandersGroup);
+const commanderMeshes = [];
+for (let i = 0; i < 12; i++) {
+const isScuttler = i < 6;
+const unit = new THREE.Mesh(
+isScuttler ? new THREE.OctahedronGeometry(2.6) : new THREE.CylinderGeometry(0.9, 0.9, 5.5, 8),
+new THREE.MeshBasicMaterial({ color: isScuttler ? 0xf59e0b : 0x5ce1e6 })
+);
+unit.userData = { angle: (i / 12) * Math.PI * 2, isScuttler };
+commandersGroup.add(unit);
+commanderMeshes.push(unit);
+}
+const sternPlume = new THREE.Mesh(new THREE.ConeGeometry(16, 80, 24), new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0 }));
+sternPlume.rotation.z = Math.PI / 2;
+sternPlume.position.set(-255, 0, 0);
+darkAngel.add(sternPlume);
+const bowPlume = new THREE.Mesh(new THREE.ConeGeometry(13, 65, 24), new THREE.MeshBasicMaterial({ color: 0x5ce1e6, transparent: true, opacity: 0 }));
+bowPlume.rotation.z = -Math.PI / 2;
+bowPlume.position.set(248, 0, 0);
+darkAngel.add(bowPlume);
+const ventralPlume = new THREE.Mesh(new THREE.ConeGeometry(18, 70, 24), new THREE.MeshBasicMaterial({ color: 0x7ce38b, transparent: true, opacity: 0 }));
+ventralPlume.rotation.x = Math.PI;
+ventralPlume.position.set(0, -52, 0);
+darkAngel.add(ventralPlume);
+const supplyCanister = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0x7ce38b }));
+supplyCanister.rotation.z = Math.PI / 2;
+supplyCanister.visible = false;
+scene.add(supplyCanister);
+let ivanCombatMode = false, superBayMode = false, isCamo = false, isXray = false, doorsOpen = false, shipsDeployed = false, sosActive = false, ventClearing = false, codeBlackActive = false;
+let activePulse = null, pulseTimer = 0, laserTimer = 0, handLaserTimer = 0, canisterProgress = -1, sosTimer = 0;
+function logMsg(msg, isAlert = false) {
+const box = document.getElementById('sys-log');
+box.innerHTML += <div style="color:${isAlert ? '#ff6b6b' : '#7ce38b'}">> ${msg}</div>;
+box.scrollTop = box.scrollHeight;
+}
+function toggleIvanCombat() {
+ivanCombatMode = !ivanCombatMode;
+if (ivanCombatMode && !shipsDeployed && !isXray) toggleXray();
+const btn = document.getElementById('btn-ivan-mode');
+btn.classList.toggle('active', ivanCombatMode);
+btn.textContent = ivanCombatMode
+? ' IVAN MODE: COMBAT (4 BIG WINGS OPEN)'
+: ' IVAN MODE: ASTEROID (4 BIG WINGS CLOSED)';
+document.getElementById('val-ivan').textContent = ivanCombatMode
+? 'COMBAT (4 BIG STRAIGHT WINGS)'
+: 'ASTEROID (4 BIG WINGS CLOSED)';
+logMsg(ivanCombatMode
+? 'PROJECT IVAN ACTIVATED: 4 BIG STRAIGHT WINGS SLOWLY PIVOTING DOWNWARD!'
+: 'PROJECT IVAN DEACTIVATED: 4 BIG STRAIGHT WINGS CLOSED WITH BASE.');
+}
+function fireIvanLaser() {
+if (!ivanCombatMode) toggleIvanCombat();
+if (!shipsDeployed) toggleDocking();
+laserTimer = 1.0;
+document.getElementById('val-ivan').textContent = 'FIRING MASSIVE POINTED LASER!';
+logMsg('PROJECT IVAN: MASSIVE POINTED LASER MACHINE FIRING HIGH-ENERGY BEAM!');
+}
+function fireHandLaser() {
+if (!shipsDeployed) toggleDocking();
+handLaserTimer = 1.0;
+document.getElementById('val-hand').textContent = 'CRATER LASER PROSPECTING!';
+logMsg('THE HAND: WIDE PARABOLIC DISH FIRING CENTERED CRATER-MINING LASER!');
+}
+function toggleSuperBay() {
+superBayMode = !superBayMode;
+if (superBayMode && !isXray) toggleXray();
+if (superBayMode && shipsDeployed) toggleDocking();
+const btn = document.getElementById('btn-superbay');
+btn.classList.toggle('active', superBayMode);
+btn.textContent = superBayMode
+? ' SUPER-BAY ACTIVE: IVAN FULL REFIT MODE'
+: ' TRANSFORM: IVAN SUPER-BAY (RETRACT WALLS)';
+document.getElementById('val-bays').textContent = superBayMode
+? '1 MERGED SUPER-BAY (IVAN REFIT)'
+: '3 ISOLATED BAYS (36 SATS)';
+logMsg(superBayMode
+? 'TRANSFORMING DOCKYARD: RETRACTING BULKHEAD WALLS INTO HULL FLANKS. MERGING BAYS 1–3 FOR PROJECT IVAN!'
+: 'EXTENDING INTERNAL BULKHEAD WALLS. RESTORING 3 ISOLATED DRY DOCK BAYS.');
+}
+function triggerDistress() {
+sosActive = !sosActive;
+if (sosActive) ventClearing = false;
+document.getElementById('btn-vents').classList.remove('active');
+sosSat.visible = sosActive;
+commandersGroup.visible = sosActive;
+const btn = document.getElementById('btn-sos');
+btn.classList.toggle('active', sosActive);
+if (sosActive) {
+sosTimer = 0;
+sosSat.position.set(170, -110, 140);
+if (!doorsOpen) toggleDoors();
+btn.textContent = '[SOS] RECOVERY IN PROGRESS (CLICK TO RESET)';
+document.getElementById('val-remora').textContent = 'SWARM LATCHED TO DISTRESS SAT!';
+document.getElementById('val-scuttler').textContent = 'COMMANDERS LEADING CAPTURE';
+document.getElementById('val-viper').textContent = 'LOUVERS & NETS PREPPED';
+logMsg('DISTRESS SIGNAL! EXTERIOR REMORAS SWARMING TUMBLING SATELLITE!', true);
+logMsg('SCUTTLER FIELD COMMANDERS & VIPERS DEPLOYED FOR EXTRACTION.');
+} else {
+btn.textContent = '[SOS] SATELLITE IN TROUBLE: DISPATCH SWARM';
+document.getElementById('val-remora').textContent = 'EXTERIOR PATROL & VENT OPS';
+document.getElementById('val-scuttler').textContent = 'COMMANDERS READY (DRILL-BLADES)';
+document.getElementById('val-viper').textContent = 'LOUVER & NET SERPENTS READY';
+logMsg('DISTRESS SATELLITE SECURED IN DRY DOCK. REMORAS RESUMED PATROL.');
+}
+}
+function toggleVentClearing() {
+ventClearing = !ventClearing;
+if (ventClearing && sosActive) triggerDistress();
+const btn = document.getElementById('btn-vents');
+btn.classList.toggle('active', ventClearing);
+btn.textContent = ventClearing ? ' REMORAS: CLEARING VENTS & DOORS (ACTIVE)' : ' REMORAS: CLEAR CLOGGED VENTS & DOORS';
+document.getElementById('val-remora').textContent = ventClearing ? 'ACCESSING DOORS & CLOGGED VENTS' : 'EXTERIOR PATROL & VENT OPS';
+logMsg(ventClearing
+? 'REMORAS ENTERING NARROW ACCESS DOORS & CLEARING CLOGGED CERAMIC VENTS (/// \\).'
+: 'VENT & ACCESS DOOR CLEARANCE COMPLETE. REMORAS ON PERIMETER PATROL.');
+}
+function toggleCamo() {
+isCamo = !isCamo;
+hullMesh.material = isCamo ? regolithMat : obsidianMat;
+solarMesh.visible = !isCamo;
+const btn = document.getElementById('btn-camo');
+btn.textContent = isCamo ? ' HULL: REGOLITH STEALTH CAMO (ACTIVE)' : ' HULL: MATTE-OBSIDIAN BASALT ARMOR';
+btn.classList.toggle('active', isCamo);
+logMsg(isCamo ? 'ELECTRO-CHROMIC REGOLITH CAMOUFLAGE ENGAGED.' : 'MATTE-OBSIDIAN BASALT-TITANIUM ARMOR EXPOSED.');
+}
+function toggleXray() {
+isXray = !isXray;
+obsidianMat.opacity = isXray ? 0.20 : 1.0;
+regolithMat.opacity = isXray ? 0.20 : 1.0;
+solarMat.opacity = isXray ? 0.16 : 1.0;
+const btn = document.getElementById('btn-xray');
+btn.textContent = isXray ? ' VIEW: INTERNAL DRY-DOCK & MAGAZINES' : ' VIEW: EXTERNAL ARMOR SHELL';
+btn.classList.toggle('active', isXray);
+}
+function toggleDoors() {
+doorsOpen = !doorsOpen;
+const btn = document.getElementById('btn-doors');
+btn.textContent = doorsOpen ? ' BELLY DOORS & 65m ARMS: DEPLOYED' : ' BELLY DOORS (3x) & 65m ARMS: CLOSED';
+btn.classList.toggle('active', doorsOpen);
+logMsg(doorsOpen ? 'BELLY HATCHES OPEN. TWIN 65m CAPTURE ARMS EXTENDING.' : '65m CAPTURE ARMS STOWED. BELLY HATCHES SEALED.');
+}
+function toggleDocking() {
+if (!doorsOpen && !shipsDeployed) toggleDoors();
+shipsDeployed = !shipsDeployed;
+const btn = document.getElementById('btn-dock');
+btn.textContent = shipsDeployed ? ' FLEET: DEPLOYED FOR ORBITAL OPS' : ' DEPLOY IVAN & THE HAND (ORBITAL OPS)';
+btn.classList.toggle('active', shipsDeployed);
+logMsg(shipsDeployed ? 'PROJECT IVAN & THE HAND DEPLOYED BELOW BELLY DOORS.' : 'VESSELS RECOVERED INTO VECTRAN NET CRADLES.');
+}
+function firePulse(type) {
+activePulse = type;
+pulseTimer = 1.0;
+const labels = {
+stern: '12 STERN PULSE UNITS FIRING (STAGGERED FORWARD RIPPLE)',
+bow: '8 BOW BRAKING UNITS FIRING (11 km/s -> 7.6 km/s DECEL)',
+ventral: '4 VENTRAL LIFT UNITS FIRING (162+ MEGANEWTONS LIFT)'
+};
+document.getElementById('val-pulse').textContent = type.toUpperCase() + ' ARRAY ACTIVE';
+logMsg(labels[type] + '. VECTRAN NETS ISOLATING SHOCK.');
+}
+function launchMassDriver() {
+canisterProgress = 0;
+supplyCanister.visible = true;
+logMsg('FAR-SIDE LUNAR MASS DRIVER: SILENT ELECTROMAGNETIC LAUNCH...');
+}
+function triggerCodeBlack() {
+codeBlackActive = !codeBlackActive;
+const btn = document.getElementById('btn-codeblack');
+const gridStatus = document.getElementById('grid-status');
+btn.classList.toggle('active', codeBlackActive);
+if (codeBlackActive) {
+gridStatus.textContent = '● CODE BLACK: PHYSICAL AIR-GAP LOCKDOWN';
+gridStatus.style.color = '#ff6b6b';
+logMsg('CODE BLACK: BREAKER SWITCHES DROPPED. EXPLOSIVE BOLT PINS LOCKED!', true);
+} else {
+gridStatus.textContent = '● AEGIS-NET QUANTUM FIREWALL: VERIFIED';
+gridStatus.style.color = '#7ce38b';
+logMsg('4-STAGE SEQUENTIAL RESTART COMPLETE. AEGIS-NET NOMINAL.');
+}
+}
+function animate() {
+requestAnimationFrame(animate);
+controls.update();
+habitRing.rotation.x += 0.015;
+handAntennaCrossbar.rotation.y += 0.025;
+massiveLaserBody.material.emissive.setHex(ivanCombatMode ? 0x0ea5e9 : 0x0c4a6e);
+ivanWings.forEach(w => {
+const cfg = w.userData;
+const targetX = ivanCombatMode ? cfg.openX : cfg.closedX;
+const targetZ = ivanCombatMode ? cfg.openZ : cfg.closedZ;
+const targetY = ivanCombatMode ? cfg.openY : cfg.closedY;
+const targetRotX = Math.PI + (ivanCombatMode ? cfg.openTiltX : cfg.closedTiltX);
+const targetRotZ = ivanCombatMode ? cfg.openTiltZ : cfg.closedTiltZ;
+w.position.x += (targetX - w.position.x) * 0.04;
+w.position.z += (targetZ - w.position.z) * 0.04;
+w.position.y += (targetY - w.position.y) * 0.04;
+w.rotation.x += (targetRotX - w.rotation.x) * 0.04;
+w.rotation.z += (targetRotZ - w.rotation.z) * 0.04;
+});
+const targetWallZ = superBayMode ? 33 : 15.5;
+const targetWallScaleZ = superBayMode ? 0.08 : 1.0;
+retractableWalls.forEach(w => {
+w.left.position.z += (targetWallZ - w.left.position.z) * 0.08;
+w.right.position.z += (-targetWallZ - w.right.position.z) * 0.08;
+w.left.scale.z += (targetWallScaleZ - w.left.scale.z) * 0.08;
+w.right.scale.z += (targetWallScaleZ - w.right.scale.z) * 0.08;
+});
+const targetIvanX = superBayMode ? 0 : 95;
+const targetIvanScale = superBayMode ? 1.85 : 1.0;
+ivanGroup.position.x += (targetIvanX - ivanGroup.position.x) * 0.06;
+ivanGroup.scale.set(
+ivanGroup.scale.x + (targetIvanScale - ivanGroup.scale.x) * 0.06,
+ivanGroup.scale.y + (targetIvanScale - ivanGroup.scale.y) * 0.06,
+ivanGroup.scale.z + (targetIvanScale - ivanGroup.scale.z) * 0.06
+);
+handGroup.visible = !superBayMode;
+bay3Sats.forEach(s => { s.visible = !superBayMode; });
+if (laserTimer > 0) {
+laserTimer -= 0.018;
+ivanLaserBeam.material.opacity = laserTimer * 0.92;
+if (laserTimer <= 0) {
+document.getElementById('val-ivan').textContent = ivanCombatMode ? 'COMBAT (4 BIG STRAIGHT WINGS)' : 'ASTEROID (4 BIG WINGS CLOSED)';
+}
+} else {
+ivanLaserBeam.material.opacity = 0;
+}
+if (handLaserTimer > 0) {
+handLaserTimer -= 0.018;
+handLaserBeam.material.opacity = handLaserTimer * 0.92;
+if (handLaserTimer <= 0) {
+document.getElementById('val-hand').textContent = 'TOP ANTENNA + UNIFIED DISH';
+}
+} else {
+handLaserBeam.material.opacity = 0;
+}
+const targetDoor = doorsOpen ? Math.PI * 0.45 : 0;
+const targetArmY = doorsOpen ? -28 : (superBayMode ? -6 : -12);
+bellyDoors.forEach(d => {
+d.left.rotation.x += (targetDoor - d.left.rotation.x) * 0.08;
+d.right.rotation.x += (-targetDoor - d.right.rotation.x) * 0.08;
+});
+captureArms.forEach(a => {
+a.left.position.y += (targetArmY - a.left.position.y) * 0.08;
+a.right.position.y += (targetArmY - a.right.position.y) * 0.08;
+const targetArmRotX = superBayMode ? 0.55 : 0;
+a.left.rotation.x += (targetArmRotX - a.left.rotation.x) * 0.08;
+a.right.rotation.x += (-targetArmRotX - a.right.rotation.x) * 0.08;
+});
+const targetFleetY = shipsDeployed ? -68 : 0;
+fleetGroup.position.y += (targetFleetY - fleetGroup.position.y) * 0.05;
+remoraMeshes.forEach((r, idx) => {
+r.userData.angle += r.userData.speed;
+if (sosActive) {
+const orbitR = 22 + (idx % 3) * 6;
+r.position.set(
+sosSat.position.x + Math.cos(r.userData.angle * 3) * orbitR,
+sosSat.position.y + Math.sin(r.userData.angle * 4) * 14,
+sosSat.position.z + Math.sin(r.userData.angle * 3) * orbitR
+);
+} else if (ventClearing) {
+const target = ventTargets[r.userData.ventIdx];
+const hover = new THREE.Vector3(
+target.x + Math.cos(r.userData.angle * 4) * 9,
+target.y + Math.sin(r.userData.angle * 5) * 6,
+target.z + Math.sin(r.userData.angle * 4) * 9
+);
+r.position.lerp(hover, 0.08);
+} else if (superBayMode) {
+const refitHover = new THREE.Vector3(
+Math.cos(r.userData.angle * 2 + idx) * 48,
+-2 + Math.sin(r.userData.angle * 3) * 10,
+Math.sin(r.userData.angle * 2 + idx) * 18
+);
+r.position.lerp(refitHover, 0.08);
+} else {
+const patrolPos = new THREE.Vector3(
+Math.cos(r.userData.angle) * r.userData.radius * 1.65,
+r.userData.yOff + Math.sin(r.userData.angle * 3) * 6,
+Math.sin(r.userData.angle) * r.userData.radius * 0.85
+);
+r.position.lerp(patrolPos, 0.12);
+}
+});
+if (sosActive) {
+sosTimer += 0.01;
+sosSat.position.lerp(new THREE.Vector3(95, -46, 0), 0.015);
+const spinDamp = Math.max(0.005, 0.08 - sosTimer * 0.03);
+sosSat.rotation.x += spinDamp;
+sosSat.rotation.z += spinDamp;
+commanderMeshes.forEach((c) => {
+c.userData.angle += 0.03;
+const r = c.userData.isScuttler ? 28 : 38;
+c.position.set(
+sosSat.position.x + Math.cos(c.userData.angle) * r,
+sosSat.position.y + (c.userData.isScuttler ? 8 : -8),
+sosSat.position.z + Math.sin(c.userData.angle) * r
+);
+});
+}
+sternPlume.material.opacity = 0;
+bowPlume.material.opacity = 0;
+ventralPlume.material.opacity = 0;
+if (pulseTimer > 0) {
+pulseTimer -= 0.022;
+if (activePulse === 'stern') sternPlume.material.opacity = pulseTimer * 0.85;
+if (activePulse === 'bow') bowPlume.material.opacity = pulseTimer * 0.85;
+if (activePulse === 'ventral') ventralPlume.material.opacity = pulseTimer * 0.85;
+darkAngel.position.x = Math.sin(pulseTimer * 20) * 1.4;
+if (pulseTimer <= 0) {
+document.getElementById('val-pulse').textContent = '24 READY (12S / 8B / 4V)';
+}
+} else {
+darkAngel.position.x *= 0.9;
+}
+if (canisterProgress >= 0) {
+canisterProgress += 0.015;
+supplyCanister.position.lerpVectors(moonMesh.position, new THREE.Vector3(-95, -18, 0), canisterProgress);
+if (canisterProgress >= 1) {
+canisterProgress = -1;
+supplyCanister.visible = false;
+logMsg('MASS DRIVER PAYLOAD CAPTURED. QUANTUM SIGNATURE VERIFIED.');
+}
+}
+renderer.render(scene, camera);
+}
+animate();
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
